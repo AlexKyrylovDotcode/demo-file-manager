@@ -101,7 +101,7 @@ export async function getPresignedUrl(fileName: string, expiresIn: number = 3600
   return url;
 }
 
-export async function listFiles(): Promise<Array<{ key: string; url: string }>> {
+export async function listFiles(): Promise<Array<{ key: string }>> {
   const { ListObjectsV2Command } = await import('@aws-sdk/client-s3');
   const s3Client = await getS3Client();
   
@@ -110,15 +110,13 @@ export async function listFiles(): Promise<Array<{ key: string; url: string }>> 
   });
 
   const response = await s3Client.send(command);
-  const files: Array<{ key: string; url: string }> = [];
+  const files: Array<{ key: string }> = [];
 
   if (response.Contents) {
     for (const object of response.Contents) {
       if (object.Key) {
-        const url = getPublicUrl(object.Key);
         files.push({
           key: object.Key,
-          url: url,
         });
       }
     }

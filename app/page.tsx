@@ -5,7 +5,6 @@ import styles from './page.module.css';
 
 interface FileItem {
   key: string;
-  url: string;
 }
 
 export default function Home() {
@@ -103,25 +102,44 @@ export default function Home() {
     }
   };
 
-  const copyToClipboard = async (url: string, index: number) => {
+  const copyToClipboard = async (fileName: string, index: number) => {
     try {
-      await navigator.clipboard.writeText(url);
-      setCopiedIndex(index);
-      setTimeout(() => setCopiedIndex(null), 2000);
+      const response = await fetch(`/api/files/${encodeURIComponent(fileName)}/url`);
+      const data = await response.json();
+      
+      if (data.url) {
+        await navigator.clipboard.writeText(data.url);
+        setCopiedIndex(index);
+        setTimeout(() => setCopiedIndex(null), 2000);
+      } else {
+        alert('Failed to generate link: ' + (data.error || 'Unknown error'));
+      }
     } catch (error) {
       console.error('Failed to copy:', error);
       alert('Failed to copy link');
     }
   };
 
-  const handleDownload = (url: string, fileName: string) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = async (fileName: string) => {
+    try {
+      const response = await fetch(`/api/files/${encodeURIComponent(fileName)}/url`);
+      const data = await response.json();
+      
+      if (data.url) {
+        const link = document.createElement('a');
+        link.href = data.url;
+        link.download = fileName;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        alert('Failed to get download URL');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Failed to download file');
+    }
   };
 
   return (
@@ -168,16 +186,15 @@ export default function Home() {
                 return (
                   <div key={file.key} className={styles.fileItem}>
                     <div className={styles.fileName}>{file.key}</div>
-                    <div className={styles.fileUrl}>{file.url}</div>
                     <div className={styles.buttonGroup}>
                       <button
-                        onClick={() => handleDownload(file.url, file.key)}
+                        onClick={() => handleDownload(file.key)}
                         className={styles.downloadButton}
                       >
                         Download
                       </button>
                       <button
-                        onClick={() => copyToClipboard(file.url, originalIndex)}
+                        onClick={() => copyToClipboard(file.key, originalIndex)}
                         className={styles.copyButton}
                       >
                         {copiedIndex === originalIndex ? '✓ Copied!' : 'Copy Link'}
