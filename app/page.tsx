@@ -20,7 +20,9 @@ export default function Home() {
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
+    console.log('test');
     loadFiles();
+
   }, []);
 
   useEffect(() => {
