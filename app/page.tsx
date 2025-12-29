@@ -15,6 +15,9 @@ export default function Home() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
+  const [extractingIndex, setExtractingIndex] = useState<number | null>(null);
+  const [extractedText, setExtractedText] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     loadFiles();
@@ -142,6 +145,28 @@ export default function Home() {
     }
   };
 
+  const handleExtractText = async (fileName: string, index: number) => {
+    setExtractingIndex(index);
+    try {
+      const response = await fetch(`/api/files/${encodeURIComponent(fileName)}/extract`, {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+      if (data.text !== undefined) {
+        setExtractedText(data.text);
+        setShowModal(true);
+      } else {
+        alert('Extraction failed: ' + (data.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Extract error:', error);
+      alert('Failed to extract text');
+    } finally {
+      setExtractingIndex(null);
+    }
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.card}>
@@ -187,6 +212,15 @@ export default function Home() {
                   <div key={file.key} className={styles.fileItem}>
                     <div className={styles.fileName}>{file.key}</div>
                     <div className={styles.buttonGroup}>
+                      {file.key.toLowerCase().endsWith('.pdf') && (
+                        <button
+                          onClick={() => handleExtractText(file.key, originalIndex)}
+                          disabled={extractingIndex === originalIndex}
+                          className={styles.extractButton}
+                        >
+                          {extractingIndex === originalIndex ? 'Extracting...' : 'Extract Text'}
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDownload(file.key)}
                         className={styles.downloadButton}
@@ -214,6 +248,48 @@ export default function Home() {
           )}
         </div>
       </div>
+
+      {showModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowModal(false)}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Extracted Text</h2>
+              <button
+                className={styles.modalCloseButton}
+                onClick={() => setShowModal(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              {extractedText ? (
+                <pre className={styles.extractedText}>{extractedText}</pre>
+              ) : (
+                <div className={styles.empty}>No text extracted</div>
+              )}
+            </div>
+            <div className={styles.modalFooter}>
+              <button
+                className={styles.copyTextButton}
+                onClick={() => {
+                  if (extractedText) {
+                    navigator.clipboard.writeText(extractedText);
+                    alert('Text copied to clipboard!');
+                  }
+                }}
+              >
+                Copy Text
+              </button>
+              <button
+                className={styles.closeButton}
+                onClick={() => setShowModal(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
